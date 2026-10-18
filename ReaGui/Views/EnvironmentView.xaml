@@ -1,0 +1,59 @@
+<UserControl x:Class="ReaGui.Views.EnvironmentView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctrl="clr-namespace:ReaGui.Views.Controls">
+    <Grid Margin="14">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="360" />
+            <ColumnDefinition Width="14" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Background="{StaticResource Bg1}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="12">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                <StackPanel DataContext="{Binding Environment}">
+
+                    <TextBlock Text="引擎状态" Style="{StaticResource SectionTitle}" />
+                    <Button Content="已配置引擎 · providers" Command="{Binding ProvidersCommand}" HorizontalAlignment="Stretch" Margin="0,0,0,8" />
+                    <Button Content="引擎能力 · capabilities" Command="{Binding CapabilitiesCommand}" HorizontalAlignment="Stretch" Margin="0,0,0,18" />
+
+                    <Border Style="{StaticResource HDivider}" />
+                    <TextBlock Text="就绪诊断 · doctor" Style="{StaticResource SectionTitle}" Margin="0,14,0,8" />
+                    <TextBlock Text="目标 (可选)" FontSize="12" Foreground="{StaticResource TextMuted}" Margin="0,0,0,4" />
+                    <TextBox Text="{Binding DoctorTarget, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MonoTextBox}" Margin="0,0,0,8" />
+                    <TextBlock Text="引擎 (可选)" FontSize="12" Foreground="{StaticResource TextMuted}" Margin="0,0,0,4" />
+                    <ComboBox ItemsSource="{Binding DoctorProviderOptions}" SelectedItem="{Binding DoctorProvider}" Margin="0,0,0,10" />
+                    <Button Content="运行诊断" Style="{StaticResource PrimaryButton}" Command="{Binding DoctorCommand}" Margin="0,0,0,18" />
+
+                    <Border Style="{StaticResource HDivider}" />
+                    <TextBlock Text="环境配置 · setup" Style="{StaticResource SectionTitle}" Margin="0,14,0,8" />
+                    <Border Background="{StaticResource Bg2}" BorderBrush="{StaticResource Warning}" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,0,10">
+                        <TextBlock Text="setup 会写入配置/安装组件，请先用 dry-run 预览计划再执行。" Style="{StaticResource HintText}" Foreground="{StaticResource Warning}" />
+                    </Border>
+                    <CheckBox Content="仅预览 (dry-run)" IsChecked="{Binding SetupDryRun}" Margin="0,0,0,6" />
+                    <CheckBox Content="自动确认 (--yes)" IsChecked="{Binding SetupYes}" Margin="0,0,0,10" />
+                    <Button Content="运行 setup" Command="{Binding SetupCommand}" />
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <Grid Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Border Grid.Row="0" Background="{StaticResource Bg1}" BorderBrush="{StaticResource Border}" BorderThickness="1,1,1,0" CornerRadius="12,12,0,0" Padding="16,10">
+                <TextBlock Text="{Binding Environment.ResultTitle}" FontSize="13" FontWeight="SemiBold" />
+            </Border>
+            <Border Grid.Row="1" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="0,0,12,12" ClipToBounds="True">
+                <Grid>
+                    <ctrl:CodeViewer Document="{Binding Environment.ResultText}" Syntax="json" />
+                    <Border Background="{StaticResource Bg0}" Visibility="{Binding Environment.HasResult, Converter={StaticResource InvBoolVis}}">
+                        <TextBlock Text="点击左侧按钮检查引擎、诊断就绪状态或预览配置计划" Foreground="{StaticResource TextDim}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

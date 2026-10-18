@@ -1,0 +1,46 @@
+<UserControl x:Class="ReaGui.Views.Controls.CodeViewer"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- 工具条：搜索 / 复制 -->
+        <Border Grid.Row="0" Background="{StaticResource Bg1}" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1" Padding="10,6">
+            <Grid>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="🔍" FontSize="12" Foreground="{StaticResource TextMuted}" Margin="0,0,6,0" />
+                    <TextBox x:Name="SearchBox" Width="200" Height="26" VerticalContentAlignment="Center"
+                             TextChanged="OnSearchTextChanged" ToolTip="在输出中查找（回车下一个）" />
+                    <Button Content="上一个" Style="{StaticResource ToolButton}" Margin="6,0,0,0" Click="OnFindPrev" />
+                    <Button Content="下一个" Style="{StaticResource ToolButton}" Margin="2,0,0,0" Click="OnFindNext" />
+                    <TextBlock x:Name="MatchCount" Text="" Foreground="{StaticResource TextDim}" FontSize="11" Margin="8,0,0,0" VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <TextBlock x:Name="LangBadge" Text="" Foreground="{StaticResource TextDim}" FontSize="11" Margin="0,0,10,0" VerticalAlignment="Center" />
+                    <Button Content="复制" Style="{StaticResource ToolButton}" Click="OnCopy" />
+                    <Button Content="复制原始 JSON" Style="{StaticResource ToolButton}" Margin="2,0,0,0" Click="OnCopyRaw" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 编辑区 -->
+        <Border Grid.Row="1" Background="{StaticResource Bg0}">
+            <RichTextBox x:Name="Editor"
+                         IsReadOnly="True"
+                         IsDocumentEnabled="True"
+                         BorderThickness="0"
+                         Background="Transparent"
+                         Foreground="{StaticResource TextPrimary}"
+                         FontFamily="{StaticResource MonoFont}"
+                         FontSize="13"
+                         Padding="10,8"
+                         VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Auto"
+                         CaretBrush="{StaticResource Accent}"
+                         SelectionBrush="{StaticResource AccentDim}" />
+        </Border>
+    </Grid>
+</UserControl>

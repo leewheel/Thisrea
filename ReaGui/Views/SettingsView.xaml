@@ -1,0 +1,58 @@
+<UserControl x:Class="ReaGui.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="14">
+        <Border Background="{StaticResource Bg1}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="12">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="28">
+                <StackPanel DataContext="{Binding Settings}" MaxWidth="720" HorizontalAlignment="Left">
+
+                    <TextBlock Text="连接配置" FontSize="18" FontWeight="Bold" Margin="0,0,0,4" />
+                    <TextBlock Text="REA GUI 通过 node 调用 REA 的 CLI（scripts/rea.mjs）。请指向本机 REA 仓库根目录。"
+                               Style="{StaticResource HintText}" Margin="0,0,0,22" />
+
+                    <TextBlock Text="REA 仓库根目录" Style="{StaticResource SectionTitle}" />
+                    <DockPanel Margin="0,0,0,4">
+                        <Button DockPanel.Dock="Right" Content="自动探测" Command="{Binding DetectCommand}" Margin="6,0,0,0" />
+                        <Button DockPanel.Dock="Right" Content="浏览…" Command="{Binding BrowseRepoCommand}" Margin="6,0,0,0" />
+                        <TextBox Text="{Binding RepoRoot, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MonoTextBox}" />
+                    </DockPanel>
+                    <TextBlock Text="{Binding ScriptFullPreview}" Style="{StaticResource MonoText}" Foreground="{StaticResource TextDim}" Margin="0,0,0,18" />
+
+                    <Grid Margin="0,0,0,18">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="160" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="node 可执行文件" Style="{StaticResource SectionTitle}" />
+                            <TextBox Text="{Binding NodePath, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MonoTextBox}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="超时（秒）" Style="{StaticResource SectionTitle}" />
+                            <TextBox Text="{Binding TimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MonoTextBox}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock Text="脚本相对路径" Style="{StaticResource SectionTitle}" />
+                    <TextBox Text="{Binding ScriptRelativePath, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MonoTextBox}" Margin="0,0,0,22" />
+
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="保存设置" Style="{StaticResource PrimaryButton}" Command="{Binding SaveCommand}" Padding="22,8" />
+                        <Button Content="测试连接" Command="{Binding TestCommand}" Margin="10,0,0,0" Padding="18,8" />
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding Status}" Foreground="{StaticResource Accent}" Margin="0,14,0,0" TextWrapping="Wrap" />
+
+                    <Border Background="{StaticResource Bg2}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,26,0,0">
+                        <StackPanel>
+                            <TextBlock Text="前置条件" FontWeight="SemiBold" Margin="0,0,0,8" />
+                            <TextBlock Style="{StaticResource HintText}" LineHeight="20"
+                                       Text="若运行命令时提示 “REA's compiled runtime is missing”，请在 REA 仓库根目录执行：npm ci &amp;&amp; npm run build:cached，构建出 dist/cli-runtime 后再回到本工具。Ghidra / IDA / Hopper 等引擎需自行安装并配置（见 REA README）。" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</UserControl>

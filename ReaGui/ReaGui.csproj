@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>ReaGui</AssemblyName>
+    <RootNamespace>ReaGui</RootNamespace>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
+    <Authors>leewheel</Authors>
+    <Product>REA GUI</Product>
+    <AssemblyTitle>REA GUI</AssemblyTitle>
+    <Description>WPF 图形界面，用于通过 UI 驱动 REA 逆向工程 CLI。</Description>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- app.png 作为 WPF 资源用于窗口图标；app.ico 通过 ApplicationIcon 嵌入 exe 图标 -->
+    <Resource Include="Assets\app.png" />
+  </ItemGroup>
+
+</Project>

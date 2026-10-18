@@ -1,0 +1,111 @@
+<UserControl x:Class="ReaGui.Views.AnalysisView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctrl="clr-namespace:ReaGui.Views.Controls">
+    <Grid Margin="14">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="340" />
+            <ColumnDefinition Width="14" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- 左侧：命令与参数 -->
+        <Border Grid.Column="0" Background="{StaticResource Bg1}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="12">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                <StackPanel DataContext="{Binding Analysis}">
+                    <TextBlock Text="分析命令" Style="{StaticResource SectionTitle}" />
+                    <ListBox ItemsSource="{Binding CoreCommands}" SelectedItem="{Binding SelectedCommand}"
+                             MaxHeight="252" Margin="0,0,0,4">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem" BasedOn="{StaticResource CommandItemStyle}" />
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Title}" FontFamily="{StaticResource UiFont}" FontSize="13" Foreground="{StaticResource TextPrimary}" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource TextDim}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <TextBlock Text="{Binding SelectedCommand.Description}" Style="{StaticResource HintText}" Margin="0,6,0,12" />
+
+                    <!-- 选择器（函数/地址/搜索词/追踪查询） -->
+                    <StackPanel Visibility="{Binding ShowSelector, Converter={StaticResource BoolVis}}" Margin="0,0,0,10">
+                        <TextBlock Text="{Binding SelectorLabel}" Style="{StaticResource SectionTitle}" Margin="0,0,0,4" />
+                        <TextBox Text="{Binding SelectorValue, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MonoTextBox}" />
+                    </StackPanel>
+
+                    <!-- 文件偏移 -->
+                    <StackPanel Visibility="{Binding ShowFileOffset, Converter={StaticResource BoolVis}}" Margin="0,0,0,10">
+                        <TextBlock Text="文件偏移 (0xHEX, 可选)" Style="{StaticResource SectionTitle}" Margin="0,0,0,4" />
+                        <TextBox Text="{Binding FileOffset, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MonoTextBox}" />
+                    </StackPanel>
+
+                    <!-- 搜索选项 -->
+                    <StackPanel Visibility="{Binding ShowSearchOptions, Converter={StaticResource BoolVis}}" Margin="0,0,0,10">
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="类型" Style="{StaticResource SectionTitle}" Margin="0,0,0,4" />
+                                <ComboBox SelectedValuePath="Content" SelectedValue="{Binding SearchKind}">
+                                    <ComboBoxItem Content="strings" />
+                                    <ComboBoxItem Content="procedures" />
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="模式" Style="{StaticResource SectionTitle}" Margin="0,0,0,4" />
+                                <ComboBox SelectedValuePath="Content" SelectedValue="{Binding SearchMode}">
+                                    <ComboBoxItem Content="literal" />
+                                    <ComboBoxItem Content="regex" />
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
+                        <CheckBox Content="区分大小写" IsChecked="{Binding CaseSensitive}" />
+                    </StackPanel>
+
+                    <Button Content="运行分析" Style="{StaticResource PrimaryButton}" Height="38"
+                            Command="{Binding RunCommand}" Margin="0,6,0,12" />
+
+                    <Border Background="{StaticResource Bg0}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="8" Padding="10">
+                        <StackPanel>
+                            <TextBlock Text="命令行预览" FontSize="10.5" Foreground="{StaticResource TextDim}" Margin="0,0,0,4" />
+                            <TextBlock Text="{Binding Preview}" Style="{StaticResource MonoText}" TextWrapping="Wrap" Foreground="{StaticResource Accent}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <!-- 右侧：结果 -->
+        <Grid Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Border Grid.Row="0" Background="{StaticResource Bg1}" BorderBrush="{StaticResource Border}" BorderThickness="1,1,1,0" CornerRadius="12,12,0,0" Padding="16,10">
+                <TextBlock Text="{Binding Analysis.ResultTitle}" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" />
+            </Border>
+            <Border Grid.Row="1" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="0,0,12,12" ClipToBounds="True">
+                <Grid>
+                    <ctrl:CodeViewer Document="{Binding Analysis.ResultText}" Syntax="json" />
+                    <Border Background="{StaticResource Bg0}" Visibility="{Binding Analysis.HasResult, Converter={StaticResource InvBoolVis}}">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <TextBlock Text="◎" FontSize="40" Foreground="{StaticResource BorderStrong}" HorizontalAlignment="Center" Margin="0,0,0,12" />
+                            <TextBlock Text="选择目标与命令，运行后在此查看反编译 / 分析结果" Foreground="{StaticResource TextDim}" FontSize="13" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

@@ -1,0 +1,113 @@
+<UserControl x:Class="ReaGui.Views.RunnerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctrl="clr-namespace:ReaGui.Views.Controls"
+             xmlns:vm="clr-namespace:ReaGui.ViewModels">
+    <UserControl.Resources>
+        <!-- 动态表单字段模板 -->
+        <DataTemplate DataType="{x:Type vm:ParameterFieldViewModel}">
+            <StackPanel Margin="0,0,0,12">
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                    <TextBlock Text="{Binding Label}" Foreground="{StaticResource TextPrimary}" FontSize="12.5" />
+                    <TextBlock Text=" *" Foreground="{StaticResource Error}" FontSize="12.5"
+                               Visibility="{Binding Required, Converter={StaticResource BoolVis}}" />
+                </StackPanel>
+
+                <!-- 布尔开关 -->
+                <CheckBox Content="启用" IsChecked="{Binding BoolValue}"
+                          Visibility="{Binding ShowBool, Converter={StaticResource BoolVis}}" />
+
+                <!-- 枚举 -->
+                <ComboBox ItemsSource="{Binding Options}" SelectedItem="{Binding Value}"
+                          Visibility="{Binding ShowEnum, Converter={StaticResource BoolVis}}" />
+
+                <!-- 文本 / 整数 -->
+                <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MonoTextBox}"
+                         Visibility="{Binding ShowText, Converter={StaticResource BoolVis}}" />
+
+                <!-- 文件路径 + 浏览 -->
+                <DockPanel Visibility="{Binding ShowFilePath, Converter={StaticResource BoolVis}}">
+                    <Button DockPanel.Dock="Right" Content="浏览" Command="{Binding BrowseCommand}" Margin="6,0,0,0" />
+                    <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MonoTextBox}" />
+                </DockPanel>
+
+                <TextBlock Text="{Binding Hint}" Style="{StaticResource HintText}" Margin="0,4,0,0" />
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid Margin="14">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220" />
+            <ColumnDefinition Width="12" />
+            <ColumnDefinition Width="320" />
+            <ColumnDefinition Width="12" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- 命令列表 -->
+        <Border Grid.Column="0" Background="{StaticResource Bg1}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="12">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="8,12">
+                <ItemsControl ItemsSource="{Binding Runner.Groups}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="0,0,0,8">
+                                <TextBlock Text="{Binding Name}" Style="{StaticResource SectionTitle}" Margin="12,6,12,4" />
+                                <ListBox ItemsSource="{Binding Commands}" SelectedItem="{Binding DataContext.Runner.SelectedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                         Background="Transparent" BorderThickness="0"
+                                         ItemContainerStyle="{StaticResource CommandItemStyle}">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Title}" />
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <!-- 参数表单 -->
+        <Border Grid.Column="2" Background="{StaticResource Bg1}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="12">
+            <DockPanel Margin="16">
+                <StackPanel DockPanel.Dock="Top">
+                    <TextBlock Text="参数" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Text="{Binding Runner.SelectedCommand.Description}" Style="{StaticResource HintText}" Margin="0,0,0,12" />
+                </StackPanel>
+                <Border DockPanel.Dock="Bottom" Background="{StaticResource Bg0}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,10,0,0">
+                    <StackPanel>
+                        <TextBlock Text="命令行预览" FontSize="10.5" Foreground="{StaticResource TextDim}" Margin="0,0,0,4" />
+                        <TextBlock Text="{Binding Runner.Preview}" Style="{StaticResource MonoText}" TextWrapping="Wrap" Foreground="{StaticResource Accent}" />
+                    </StackPanel>
+                </Border>
+                <Button DockPanel.Dock="Bottom" Content="运行命令" Style="{StaticResource PrimaryButton}" Height="38"
+                        Command="{Binding Runner.RunCommand}" Margin="0,12,0,0" />
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Runner.Fields}" />
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
+        <!-- 结果 -->
+        <Grid Grid.Column="4">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Border Grid.Row="0" Background="{StaticResource Bg1}" BorderBrush="{StaticResource Border}" BorderThickness="1,1,1,0" CornerRadius="12,12,0,0" Padding="16,10">
+                <TextBlock Text="{Binding Runner.ResultTitle}" FontSize="13" FontWeight="SemiBold" />
+            </Border>
+            <Border Grid.Row="1" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="0,0,12,12" ClipToBounds="True">
+                <Grid>
+                    <ctrl:CodeViewer Document="{Binding Runner.ResultText}" Syntax="json" />
+                    <Border Background="{StaticResource Bg0}" Visibility="{Binding Runner.HasResult, Converter={StaticResource InvBoolVis}}">
+                        <TextBlock Text="从左侧选择一个命令，填写参数后运行" Foreground="{StaticResource TextDim}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>
