@@ -376,7 +376,17 @@ Uninstall preserves Hopper, Node.js, Evidence files, captures, unrelated skills
 and other MCP servers. Purging removes only REA's cache and state under
 `~/.rea`. A client configuration that is malformed, unreadable, or at an unsafe
 path stops the operation before anything is removed, and a client that fails
-while being updated stops the remaining removals. A purge path that is a
+while being updated stops the remaining removals. Uninstall reports each
+candidate `configuration_path` with its outcome. A client with multiple files
+keeps their individual `actions` alongside its aggregate status and detail,
+including earlier removals when a later file fails. The paths name
+the discovered configuration candidates, not resolved physical file identities.
+For JSON clients, uninstall removes every repeated `rea` member in the effective
+server table only when each registration is REA-owned. An unowned earlier
+member, or an unowned OpenCode V1 entry that removing V2 would expose, stops
+preflight before any
+removal. Repeats inside an inactive earlier copy of the server table stay
+unchanged. A purge path that is a
 symbolic link is retained and reported rather than followed. Uninstall checks
 REA's managed shared and Claude Code personal skill locations. See the
 [CLI guide](cli.md#output-and-exit-status) for exit statuses.
@@ -976,6 +986,24 @@ initialization and the client's deadline for that individual tool call. A client
 can time out earlier even when Ghidra would complete within its startup deadline.
 See [Ghidra first-query deadlines and recovery](mcp-contracts.md#ghidra-first-query-deadlines-and-recovery)
 for client options and the close/reopen recovery flow.
+
+The 330-second default is configurable. Configuration is read when REA starts:
+changing an environment variable in another shell, or closing and reopening a
+binary in the same MCP server, does not change that server's startup allowance.
+For a CLI retry with an example 30-minute allowance:
+
+```sh
+REA_GHIDRA_STARTUP_TIMEOUT_MS=1800000 rea analyze /absolute/path/to/app.exe --provider ghidra --json
+```
+
+For MCP, export useful Evidence before restarting, close the binary and resolve
+any cleanup failure, update the environment in the client's REA server launch
+configuration, then restart REA and reconnect before reopening the target. Allow
+startup plus the query in the client's own tool-call deadline. Every retry uses
+a fresh ephemeral import; smaller result requests do not reduce the prerequisite
+auto-analysis. A larger time allowance does not raise the JVM heap limit or
+guarantee completion. Keep [heap and host CPU controls](#ghidra-heap-and-cpu-controls)
+appropriate for the machine.
 
 One session contains exactly one imported Program; use `provider_id: "ghidra"`, `--provider ghidra`, or
 `REA_ANALYSIS_PROVIDER=ghidra` when both Hopper and Ghidra support the target.
