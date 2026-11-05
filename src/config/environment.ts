@@ -3,6 +3,7 @@ import {
   ghidraProgramNameSchema,
 } from "./ghidraExistingProject.js";
 import { z } from "zod";
+import { mcpInputBudgetSchema } from "./mcpInputBudget.js";
 import { isAbsolute } from "node:path";
 
 import { ConfigurationError } from "../domain/configurationErrors.js";
@@ -20,14 +21,17 @@ import {
 } from "./providerStartupTimeout.js";
 import {
   DEFAULT_GHIDRA_STARTUP_TIMEOUT_MS,
+  DEFAULT_HOPPER_CALLER_SCAN_BUDGET_MS,
   DEFAULT_HOPPER_STARTUP_TIMEOUT_MS,
 } from "../domain/analysisResourceLimits.js";
 import { mcpInputSchemaProfileSchema } from "./mcpInputSchemaProfile.js";
 import { mcpOutputSchemaProfileSchema } from "./mcpOutputSchemaProfile.js";
+import { mcpToolCatalogProfileSchema } from "./mcpToolCatalogProfile.js";
 import { mcpResponseBudgetSchema } from "./mcpResponseBudget.js";
 import { asarMaxHeaderBytesSchema } from "./asarHeaderAdmission.js";
 import { bridgeMaxRequestBytesSchema } from "./bridgeMaxRequestBytes.js";
 import { captureDecoderOldGenerationMiBSchema } from "./captureDecoderHeap.js";
+import { debuggerSessionLimitEnvironmentShape } from "./debuggerSessionLimits.js";
 import { regexMatchingDeadlineMsSchema } from "./regexMatchingDeadline.js";
 import { regexWorkerHeapRequestMiBSchema } from "./regexWorkerHeapRequest.js";
 import {
@@ -42,9 +46,11 @@ import { processStartConfigurationSchema } from "./processStart.js";
 import { parseJebMcpEndpoint } from "./jebMcpEndpoint.js";
 
 const environmentSchema = z.object({
+  ...debuggerSessionLimitEnvironmentShape,
   REA_ANALYSIS_PROVIDER: analysisProviderSelectorSchema.default("auto"),
   REA_BRIDGE_MAX_REQUEST_BYTES: bridgeMaxRequestBytesSchema.optional(),
   REA_MCP_MAX_RESPONSE_BYTES: mcpResponseBudgetSchema.optional(),
+  REA_MCP_MAX_INPUT_ELEMENTS: mcpInputBudgetSchema.optional(),
   REA_ASAR_MAX_HEADER_BYTES: asarMaxHeaderBytesSchema.optional(),
   REA_CAPTURE_DECODER_OLD_GENERATION_MIB:
     captureDecoderOldGenerationMiBSchema.optional(),
@@ -57,6 +63,7 @@ const environmentSchema = z.object({
   REA_MCP_INPUT_SCHEMA_PROFILE: mcpInputSchemaProfileSchema.optional(),
   REA_MCP_TOOL_FAMILIES: mcpToolFamiliesSchema.optional(),
   REA_MCP_OUTPUT_SCHEMA_PROFILE: mcpOutputSchemaProfileSchema.optional(),
+  REA_MCP_TOOL_CATALOG_PROFILE: mcpToolCatalogProfileSchema.optional(),
   REA_IDA_MCP_CONFIG: z
     .string()
     .min(1)
@@ -97,6 +104,9 @@ const environmentSchema = z.object({
   ),
   REA_HOPPER_STARTUP_TIMEOUT_MS: providerStartupTimeoutSchema.default(
     DEFAULT_HOPPER_STARTUP_TIMEOUT_MS,
+  ),
+  REA_HOPPER_CALLER_SCAN_BUDGET_MS: providerStartupTimeoutSchema.default(
+    DEFAULT_HOPPER_CALLER_SCAN_BUDGET_MS,
   ),
   REA_SWIFTC_COMPILE_TIMEOUT_MS: providerStartupTimeoutSchema.default(
     DEFAULT_SWIFTC_COMPILE_TIMEOUT_MS,
@@ -236,7 +246,13 @@ export const parseEnvironment = (
           "REA_GHIDRA_SEED_FILE",
           "REA_GHIDRA_DISABLED_ANALYZERS",
           "REA_GHIDRA_NATIVEAOT_JAR",
-        ].filter((setting) => environment[setting] !== undefined);
+        ].filter(
+          (setting) =>
+            // Blank analyzer lists parse to no override, so they cannot conflict.
+            (setting === "REA_GHIDRA_DISABLED_ANALYZERS"
+              ? env[setting]
+              : environment[setting]) !== undefined,
+        );
   if (incompatible.length > 0)
     return err(
       new ConfigurationError("Invalid existing Ghidra project configuration", {

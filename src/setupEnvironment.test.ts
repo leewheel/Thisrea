@@ -1,3 +1,4 @@
+import { currentClientRegistrationCommand } from "./application/ClientRegistrationIdentity.js";
 import { UpdateCommandRunner } from "./application/UpdateCommandRunner.js";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -16,7 +17,6 @@ import { createSystemDoctorHost } from "./doctorRuntime.js";
 import { PRODUCT_IDENTITY } from "./identity.js";
 import {
   invokingPackageRunner,
-  packageRunnerRegistrationCommand,
   withoutPackageRunnerIdentity,
 } from "./application/ClientRegistrationIdentity.js";
 import { snapshotEnvironment } from "./process/snapshotEnvironment.js";
@@ -86,8 +86,8 @@ it("plans setup and uninstall against selected home and client overrides", async
         }),
       ]),
     );
-    expect(host.registrationCommand).toContain(
-      PRODUCT_IDENTITY.registrationPackageSpecifier,
+    expect(host.registrationCommand).toEqual(
+      currentClientRegistrationCommand({ platform: "win32", environment }),
     );
     const clients = await systemUninstallHost(
       environment.HOME,
@@ -195,6 +195,7 @@ it.each([
       REA_GHIDRA_STARTUP_TIMEOUT_MS: "2700000",
       REA_HOPPER_STARTUP_TIMEOUT_MS: "120000",
       REA_MCP_INPUT_SCHEMA_PROFILE: "full",
+      REA_MCP_TOOL_CATALOG_PROFILE: "hot-cold",
       REA_CAPTURE_DECODER_OLD_GENERATION_MIB: "256",
       REA_REGEX_MATCHING_DEADLINE_MS: "10000",
       REA_REGEX_WORKER_HEAP_REQUEST_MIB: "256",
@@ -235,6 +236,7 @@ it.each([
           REA_GHIDRA_STARTUP_TIMEOUT_MS: "2700000",
           REA_HOPPER_STARTUP_TIMEOUT_MS: "120000",
           REA_MCP_INPUT_SCHEMA_PROFILE: "full",
+          REA_MCP_TOOL_CATALOG_PROFILE: "hot-cold",
           REA_CAPTURE_DECODER_OLD_GENERATION_MIB: "256",
           REA_REGEX_MATCHING_DEADLINE_MS: "10000",
           REA_REGEX_WORKER_HEAP_REQUEST_MIB: "256",
@@ -301,7 +303,7 @@ it.each([
         createDoctorHostFixture({ platform: "win32" }),
         environment,
       ).registrationCommand,
-    ).toEqual(packageRunnerRegistrationCommand(runner, "win32"));
+    ).toEqual(currentClientRegistrationCommand({ platform: "win32" }));
     expect(withoutPackageRunnerIdentity(environment, "win32")).toEqual({
       NPM_CONFIG_USER_AGENT: userAgent,
     });
@@ -378,7 +380,7 @@ it("registers the selected Windows package runner after canonicalizing environme
   );
   try {
     expect(host.registrationCommand).toEqual(
-      packageRunnerRegistrationCommand("npx", "win32"),
+      currentClientRegistrationCommand({ platform: "win32" }),
     );
   } finally {
     await host.close?.();
