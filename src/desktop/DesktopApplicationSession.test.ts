@@ -1,4 +1,4 @@
-import { readdir } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { describe, expect, it, vi } from "vitest";
@@ -64,6 +64,33 @@ describe.skipIf(process.platform !== "linux")("runDesktopSession", () => {
     expect(checkpoints).toEqual(["stop", "exit"]);
     expect(vi.mocked(terminateTokenOwnedProcesses)).toHaveBeenCalledTimes(1);
   }, 30_000);
+
+  it("launches the application without the agent environment's variables", async () => {
+    const root = await createTestTempDirectory("desktop-session-env-");
+    const plan = shellPlan(root, `env > "${join(root, "env")}"`);
+
+    await runDesktopSession({
+      ...plan,
+      environment: {
+        ...plan.environment,
+        AGENTENV_CONTROL_TOKEN: "control",
+        AGENTENV_URL: "http://127.0.0.1:1",
+        NOT_AGENTENV_KEPT: "kept",
+      },
+    });
+
+    const names = (await readFile(join(root, "env"), "utf8"))
+      .split("\n")
+      .map((line) => line.split("=")[0]);
+    expect(names.filter((name) => name?.startsWith("AGENTENV_"))).toEqual([]);
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "NOT_AGENTENV_KEPT",
+        "PATH",
+        "REA_PROCESS_RUN_ID",
+      ]),
+    );
+  }, 30_000);
 });
 
 describe.skipIf(process.platform !== "linux")(
@@ -109,6 +136,80 @@ describe.skipIf(process.platform !== "linux")(
       expect(outcome.session.end_reason).toBe("application_exited");
       expect(outcome.unreadableWindowSamples).toBe(4);
       expect(samples).toBeGreaterThanOrEqual(6);
+    }, 30_000);
+  },
+);
+
+describe.skipIf(process.platform === "win32")(
+  "runDesktopSession stderr",
+  () => {
+    it("keeps the end of an app's stderr when it writes more than the session keeps", async () => {
+      const root = await createTestTempDirectory("desktop-session-stderr-");
+      const cause =
+        "[error] notes: Unable to find an appropriate java runtime.";
+      // About 16 KiB of warnings, then the cause, as an app that fails at launch writes.
+      const outcome = await runDesktopSession(
+        shellPlan(
+          root,
+          `i=0; while [ $i -lt 400 ]; do echo "[warning] notes: probing runtime $i of 400" >&2; i=$((i+1)); done; echo '${cause}' >&2; exit 1`,
+        ),
+      );
+
+      const { stderr, stderr_truncated } = outcome.session;
+      expect(stderr.trimEnd().endsWith(cause)).toBe(true);
+      expect(stderr).not.toContain("runtime 0 of 400");
+      expect(Buffer.byteLength(stderr)).toBeLessThanOrEqual(8 * 1024);
+      expect(stderr_truncated).toBe(true);
+    }, 30_000);
+
+    it("gives each checkpoint the titles the app's own windows have shown so far", async () => {
+      const root = await createTestTempDirectory("desktop-session-titles-");
+      const window = (id: string, name: string, title: string) => ({
+        id,
+        instance: name.toLowerCase(),
+        class: name,
+        title,
+        pid: null,
+        window_type: null,
+      });
+      let samples = 0;
+      // The app's window closes after a few samples, so the session ends with it.
+      const windows = {
+        sample: async () => ({
+          state: "listed",
+          windows:
+            (samples += 1) > 5
+              ? []
+              : [
+                  window("0x1", "Notes", "today.txt - Notes"),
+                  window("0x2", "Other", "unrelated.txt - Other"),
+                ],
+        }),
+      } as unknown as X11WindowObserver;
+      const seen: (readonly string[])[] = [];
+
+      await runDesktopSession({
+        ...shellPlan(root, "sleep 1", windows),
+        windowMatching: { names: new Set(["notes"]), byPid: false },
+        checkpoint: async (_name, _trigger, _atMs, { titles }) => {
+          seen.push(titles);
+        },
+      });
+
+      expect(seen.at(-1)).toEqual(["today.txt - Notes"]);
+    }, 30_000);
+
+    it("launches the app with glibc's fatal errors sent to its stderr, not its terminal", async () => {
+      const root = await createTestTempDirectory("desktop-session-libc-");
+
+      const outcome = await runDesktopSession(
+        shellPlan(
+          root,
+          'echo "LIBC_FATAL_STDERR_=$LIBC_FATAL_STDERR_" >&2; exit 1',
+        ),
+      );
+
+      expect(outcome.session.stderr).toContain("LIBC_FATAL_STDERR_=1");
     }, 30_000);
   },
 );

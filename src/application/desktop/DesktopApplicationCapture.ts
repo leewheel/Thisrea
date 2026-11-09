@@ -1,16 +1,20 @@
-import { arch } from "node:os";
-import { dirname } from "node:path";
+import { arch, hostname, userInfo } from "node:os";
 
 import { AnalysisCancelledError } from "../../domain/analysisErrorCore.js";
 import {
   projectAnalysisError,
   type AnalysisErrorProjection,
 } from "../../domain/analysisErrorProjection.js";
-import type {
-  DesktopApplicationCapture,
-  DesktopSession,
+import {
+  unretainedOpenedDirectories,
+  unretainedOpenedLimitation,
+} from "../../domain/desktop/appExportUnowned.js";
+import {
+  checkpointTaken,
+  type DesktopApplicationCapture,
+  type DesktopCaptureEvent,
+  type DesktopSession,
 } from "../../domain/desktop/desktopCapture.js";
-import { isWithinAny } from "../../domain/desktop/desktopStateDiff.js";
 import { createEvidence, type Evidence } from "../../domain/evidence.js";
 import { DesktopContentStore } from "../../desktop/DesktopContentStore.js";
 import {
@@ -74,7 +78,11 @@ export interface DesktopCaptureHost {
   /** Directory relative executables and paths are resolved from. */
   readonly callerDirectory: string;
   readonly nextRequest: () => SessionRequest | undefined;
-  readonly report: (message: string) => Promise<void>;
+  /** Progress text, with the event a driver waits on when there is one. */
+  readonly report: (
+    message: string,
+    event?: DesktopCaptureEvent,
+  ) => Promise<void>;
 }
 
 /** Safe failure returned to the CLI adapter. */
@@ -82,13 +90,27 @@ export interface DesktopCaptureErrorOutput extends AnalysisErrorProjection {
   readonly error: "Desktop capture failed";
 }
 
-const unique = (paths: readonly string[]) => [...new Set(paths)];
+/** The host's name and the user's, each left out when the system cannot say, as for a user with no passwd entry. */
+const hostIdentity = (): { hostname?: string; user?: string } => {
+  const name = hostname();
+  let user: string | undefined;
+  try {
+    user = userInfo().username;
+  } catch {
+    user = undefined;
+  }
+  return {
+    ...(name.length === 0 ? {} : { hostname: name }),
+    ...(user === undefined || user.length === 0 ? {} : { user }),
+  };
+};
 
 const limitationsFor = (
   session: DesktopSession,
   recorder: CheckpointRecorder,
   facts: {
     readonly unretained: readonly string[];
+    readonly home: string;
     readonly broadArguments: readonly string[];
     readonly unreadableWindowSamples: number;
   },
@@ -135,10 +157,8 @@ const limitationsFor = (
     session.processes.some((process) => !process.started_by_capture),
     "An application window belonged to a process the capture did not start; that process was left running.",
   );
-  add(
-    facts.unretained.length > 0,
-    "The application held files open in directories whose starting content was not retained; pass them with --state-path to retain it.",
-  );
+  const unretained = unretainedOpenedLimitation(facts.unretained, facts.home);
+  if (unretained !== undefined) limitations.push(unretained);
   return limitations;
 };
 
@@ -240,8 +260,23 @@ const recordCapture = async (
     store,
   );
   const recorder = new CheckpointRecorder(scope, store);
+  const acknowledge = async (titles: readonly string[] = []) => {
+    const taken = recorder.checkpoints.at(-1);
+    if (taken === undefined) return;
+    const event = checkpointTaken(
+      taken,
+      home,
+      context.scope.selectedPaths.map(({ physical }) => physical),
+      titles,
+    );
+    await host.report(
+      `Recorded checkpoint ${taken.name}: ${String(event.changes)} change(s), ${String(event.retained_files)} file(s) retained.`,
+      event,
+    );
+  };
   await host.report("Recording the starting state.");
   await recorder.record("baseline", "baseline", 0, signal);
+  await acknowledge();
   await host.report(`Launching ${inventory.argv.join(" ")}.`);
   const outcome = await runDesktopSession({
     argv: inventory.argv,
@@ -253,19 +288,19 @@ const recordCapture = async (
     maxDurationMs: request.maxDurationSeconds * 1000,
     pollIntervalMs: POLL_INTERVAL_MS,
     nextRequest: host.nextRequest,
-    checkpoint: async (name, trigger, atMs, openedFiles) => {
+    checkpoint: async (name, trigger, atMs, seen) => {
       await host.report(`Recording checkpoint ${name}.`);
-      recorder.openedFiles = openedFiles;
+      recorder.openedFiles = seen.openedFiles;
       await recorder.record(name, trigger, atMs, signal);
+      await acknowledge(seen.titles);
     },
     report: host.report,
     signal,
   });
   const { session, unreleased } = outcome;
-  const unretained = unique(
-    session.opened_files
-      .map((file) => dirname(file.path))
-      .filter((directory) => !isWithinAny(directory, scope.contentRoots)),
+  const unretained = unretainedOpenedDirectories(
+    session.opened_files.map((file) => file.path),
+    { ...scope, home },
   );
   const capture: DesktopApplicationCapture = {
     host: {
@@ -273,24 +308,28 @@ const recordCapture = async (
       architecture: arch(),
       display: admitted.display,
       home,
+      ...hostIdentity(),
     },
     application,
     session,
     state: {
       roots: [...scope.roots],
       content_roots: [...scope.contentRoots],
+      baseline_non_files: recorder.baselineNonFiles,
       state_directories: [...scope.stateDirectories],
+      selected_paths: [...context.scope.selectedPaths],
       excluded: [...scope.excluded],
       checkpoints: recorder.checkpoints,
       content_files: store.files,
       content_bytes: store.bytes,
       omitted_content: [...store.omissions],
-      unretained_opened_directories: unretained,
+      unretained_opened_directories: [...unretained],
     },
     limitations: [
       ...admitted.limitations,
       ...limitationsFor(session, recorder, {
         unretained,
+        home,
         broadArguments: context.scope.broadArguments,
         unreadableWindowSamples: outcome.unreadableWindowSamples,
       }),
@@ -338,6 +377,7 @@ const runCapture = async (
   if (signal?.aborted === true && session.end_reason !== "cancelled")
     throw new AnalysisCancelledError(DESKTOP_OPERATION, {
       cause: signal.reason,
+      partialObservation: evidence,
     });
   return evidence;
 };
