@@ -122,6 +122,7 @@ const TARGETS: TargetFixtures = {
   unityfs: { ...archive, format: "unityfs" },
   wxapkg: { ...archive, format: "wxapkg" },
   uimage: { ...archive, format: "uimage" },
+  "android-boot-image": { ...archive, format: "android-boot-image" },
   uf2: { ...archive, format: "uf2" },
   dfuse: { ...archive, format: "dfuse" },
   dmg: { ...archive, format: "dmg" },
@@ -135,6 +136,7 @@ const TARGETS: TargetFixtures = {
     espFlash: { selected: true, flashOffset: null, partitionTableOffset: null },
   },
   fit: { ...archive, format: "fit" },
+  "ntfs-mft": { ...archive, format: "ntfs-mft" },
   plist: { ...artifact, format: "plist" },
   javascript: { ...artifact, format: "javascript" },
   "source-map": { ...artifact, format: "source-map" },
@@ -154,8 +156,10 @@ describe("target format vocabularies", () => {
         result: { observed: true },
       });
       expect(parseEvidence(roundTrip(evidence)).subject).toMatchObject({
-        format: target.format,
-        architecture: target.architecture ?? null,
+        identity: {
+          format: target.format,
+          architecture: target.architecture ?? null,
+        },
       });
       const bundle = createImmutableEvidenceBundle([evidence]);
       expect(parseEvidenceBundle(roundTrip(bundle)).artifacts).toEqual([
@@ -169,7 +173,10 @@ describe("target format vocabularies", () => {
         analysisSnapshotSchema.shape.target.parse(
           roundTrip(snapshotTarget(target)),
         ),
-      ).toMatchObject({ format: target.format, kind: target.kind });
+      ).toMatchObject({
+        kind: target.kind,
+        identity: { format: target.format },
+      });
       expect(binaryTargetSummary(target)).toMatchObject({
         format: target.format,
         kind: target.kind,

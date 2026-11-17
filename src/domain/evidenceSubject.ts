@@ -29,6 +29,7 @@ export const evidenceSubjectFormatSchema = z.enum([
   "unityfs",
   "wxapkg",
   "uimage",
+  "android-boot-image",
   "dmg",
   "pkg",
   "plist",
@@ -52,6 +53,7 @@ export const evidenceSubjectFormatSchema = z.enum([
   "dfuse",
   "esp-flash-image",
   "fit",
+  "ntfs-mft",
 ]);
 
 /** Format-owned architecture declarations shared by Evidence and persisted executions. */

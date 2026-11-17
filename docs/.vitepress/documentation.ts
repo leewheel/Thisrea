@@ -44,6 +44,11 @@ export const documentationSections = [
         route: "/binary-diagnostics",
       },
       {
+        text: "ELF separate debug files",
+        source: "guides/native/elf-debug-link.md",
+        route: "/elf-debug-link",
+      },
+      {
         text: "ELF and Mach-O initializer functions",
         source: "guides/native/native-initializers.md",
         route: "/native-initializers",
@@ -67,6 +72,11 @@ export const documentationSections = [
         text: "Windows Shell Link shortcuts",
         source: "guides/native/windows-shortcut.md",
         route: "/windows-shortcut",
+      },
+      {
+        source: "guides/native/ntfs-metadata.md",
+        route: "/ntfs-metadata",
+        text: "Acquired NTFS metadata",
       },
     ],
   },
@@ -359,6 +369,11 @@ export const documentationSections = [
         route: "/design/limits-and-recovery",
       },
       {
+        text: "REA limit inventory",
+        source: "design/rea-limit-inventory.md",
+        route: "/design/rea-limit-inventory",
+      },
+      {
         text: "MCP tool design",
         source: "development/tool-design.md",
         route: "/tool-design",
@@ -524,6 +539,11 @@ export const documentationSections = [
         route: "/agent-environments",
       },
       {
+        text: "Android boot and vendor_boot images",
+        source: "android-boot-image.md",
+        route: "/android-boot-image",
+      },
+      {
         text: "APK signature schemes",
         source: "apk-signature.md",
         route: "/apk-signature",
@@ -549,11 +569,21 @@ export const documentationSections = [
         route: "/devicetree",
       },
       {
+        text: "DWARF compile units",
+        source: "guides/native/dwarf-units.md",
+        route: "/dwarf-units",
+      },
+      {
         text: "Electron fuse state",
         source: "electron-fuses.md",
         route: "/electron-fuses",
       },
       { text: "ELF note tables", source: "elf-notes.md", route: "/elf-notes" },
+      {
+        text: "ELF dependency tables",
+        source: "elf-dependencies.md",
+        route: "/elf-dependencies",
+      },
       {
         text: "Erlang BEAM files",
         source: "erlang-beam.md",
@@ -651,6 +681,11 @@ export const documentationSections = [
         route: "/reconstruction-coverage",
       },
       {
+        text: "Release exposure",
+        source: "release-exposure.md",
+        route: "/release-exposure",
+      },
+      {
         text: "Reverse-engineering tool integrations",
         source: "reverse-engineering-tools.md",
         route: "/reverse-engineering-tools",
@@ -659,6 +694,11 @@ export const documentationSections = [
         text: "Rust binary dependency metadata",
         source: "rust-binaries.md",
         route: "/rust-binaries",
+      },
+      {
+        text: "CycloneDX dependencies",
+        source: "guides/native/cyclonedx-view.md",
+        route: "/cyclonedx-view",
       },
       {
         text: "U-Boot legacy uImage containers",
