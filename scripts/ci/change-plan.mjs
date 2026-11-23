@@ -15,10 +15,10 @@ import { planTestSelection, testShards } from "./test-selection.mjs";
 const GUARDED_WORKFLOWS = new Set([
   ".github/workflows/codeql.yml",
   ".github/workflows/pr-title.yml",
-  ".github/workflows/pr-readiness.yml",
   ".github/workflows/ci-full-pr.yml",
   ".github/workflows/release.yml",
   ".github/workflows/release-recovery.yml",
+  ".github/workflows/release-abandon.yml",
   ".github/workflows/real-ghidra-windows.yml",
   ".github/workflows/sqlite-runtime.yml",
   ".github/workflows/ci-timings.yml",
@@ -77,13 +77,36 @@ const STATIC_CODE_ONLY_INPUTS = [
 // and portable tests without changing packaged host behavior.
 const DOCS_AND_CODE_INPUTS = [
   "scripts/check-doc-facts.mjs",
+  "scripts/generate-completion-ledger.mjs",
+  "scripts/lib/completion-ledger-generation.mts",
   "scripts/generate-error-schema.mjs",
+  "scripts/generate-third-party-inventory.mjs",
   "scripts/lib/product-catalog.*",
   "scripts/lib/catalog-core.*",
   "scripts/lib/catalog-cli.*",
 ];
 const matchesAny = (file, patterns) =>
   patterns.some((pattern) => matchesGlob(file, pattern));
+
+const TYPED_LINT_FILE_EXTENSION = /\.(?:[cm]?[jt]s|[jt]sx)$/u;
+// Leave space in the Linux runner's environment for JSON-escaped job outputs
+// and the other lane outputs consumed by the required gate.
+const TYPED_LINT_OUTPUT_MAX_BYTES = 16 * 1024;
+
+const selectTypedLintFiles = (files, listCheckedOutFiles) => {
+  const candidates = files.filter((file) =>
+    TYPED_LINT_FILE_EXTENSION.test(file),
+  );
+  if (!candidates.length) return [];
+  // Deletions still affect lane and test selection. Oxlint only takes files
+  // tracked in the checkout it will check, and owns its own ignore patterns.
+  const checkedOutFiles = new Set(listCheckedOutFiles());
+  const selected = candidates.filter((file) => checkedOutFiles.has(file));
+  return Buffer.byteLength(JSON.stringify(selected)) <=
+    TYPED_LINT_OUTPUT_MAX_BYTES
+    ? selected
+    : null;
+};
 
 /**
  * Plan the CI lanes for one event. `repository` answers the Git questions the
@@ -224,8 +247,13 @@ export function planChanges(request, repository) {
     ))
       if (matchesAny(file, earlyAll ? paths : earlyInputs))
         selected[owner] = true;
-    // The documentation check scans living prose outside docs/ too.
-    if (isLivingProsePath(file)) selected.docs = true;
+    // The documentation check validates living prose and the lockfile inventory.
+    if (
+      isLivingProsePath(file) ||
+      file === "package-lock.json" ||
+      file === "website/locales/languages.json"
+    )
+      selected.docs = true;
     if (file === ".git-blame-ignore-revs") return;
     if (
       file.startsWith("licenses/") ||
@@ -303,10 +331,12 @@ export function planChanges(request, repository) {
       .filter(([, { paths }]) => matchesAny(file, paths))
       .map(([owner]) => owner);
     for (const owner of owners) selected[owner] = true;
+    // Workflow callers can become invalid when local action inputs or outputs change.
+    selected.workflows ||= /^\.github\/actions\/.+\/action\.ya?ml$/u.test(file);
     if (
       file.startsWith(".github/workflows/") ||
       file.startsWith(".github/codeql/") ||
-      file === ".github/actionlint.yaml"
+      /^\.github\/actionlint\.ya?ml$/u.test(file)
     ) {
       selected.workflows = true;
       if (GUARDED_WORKFLOWS.has(file) || file.startsWith(".github/codeql/"))
@@ -401,6 +431,9 @@ export function planChanges(request, repository) {
         ]
       : [linux],
   };
+  let checkedOutFiles;
+  const listCheckedOutFiles = () =>
+    (checkedOutFiles ??= repository.listFiles("HEAD", []));
   const testSelection = planTestSelection({
     files,
     event,
@@ -409,10 +442,14 @@ export function planChanges(request, repository) {
     // The checked-out revision is the one whose tests run. Script and
     // configuration files are listed so shared script modules can be traced.
     snapshot: {
-      list: () => repository.listFiles("HEAD", []),
+      list: listCheckedOutFiles,
       read: (paths) => repository.readFiles("HEAD", paths),
     },
   });
+  const typedLintFiles =
+    event === "pull_request" && tier === "fast" && selected.code
+      ? selectTypedLintFiles(files, listCheckedOutFiles)
+      : [];
   return {
     ...selected,
     tier,
@@ -421,6 +458,7 @@ export function planChanges(request, repository) {
     reasons,
     testSelection,
     testShards: testShards(tier, testSelection),
+    typedLintFiles,
   };
 }
 
@@ -451,11 +489,11 @@ export const gitRepository = (cwd = process.cwd()) => {
       git("ls-tree", "-r", "-z", "--name-only", revision, "--", ...directories)
         .split("\0")
         .filter(Boolean),
-    // One batch process reads every requested blob.
+    // NUL-terminate requests so a line break in a path remains part of its name.
     readFiles: (revision, paths) => {
-      const output = execFileSync("git", ["cat-file", "--batch"], {
+      const output = execFileSync("git", ["cat-file", "--batch", "-z"], {
         cwd,
-        input: paths.map((path) => `${revision}:${path}\n`).join(""),
+        input: paths.map((path) => `${revision}:${path}\0`).join(""),
         maxBuffer: 512 * 1024 * 1024,
       });
       const contents = new Map();
